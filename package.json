@@ -1,38 +1,105 @@
 {
   "name": "transitland-atlas-vscode-extension",
   "displayName": "Transitland Atlas DMFR",
+  "publisher": "interline.io",
   "repository": {
     "url": "https://github.com/transitland/transitland-atlas-vscode-extension"
   },
   "license": "GPL-3.0",
-  "description": "",
-  "version": "0.0.2",
+  "description": "Edit DMFR files with schema validation and Transitland feed status.",
+  "version": "0.1.0",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.75.0",
+    "node": ">=22"
   },
   "categories": [
     "Snippets",
     "Linters"
   ],
   "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:dmfr"
+  ],
+  "extensionDependencies": [
+    "vscode.json-language-features"
+  ],
   "contributes": {
+    "languages": [
+      {
+        "id": "dmfr",
+        "aliases": [
+          "DMFR",
+          "Distributed Mobility Feed Registry"
+        ],
+        "extensions": [
+          ".dmfr.json"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dmfr",
+        "scopeName": "source.json.dmfr",
+        "path": "./syntaxes/dmfr.tmLanguage.json"
+      }
+    ],
+    "jsonLanguageParticipants": [
+      {
+        "languageId": "dmfr"
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": "*.dmfr.json",
+        "url": "https://dmfr.transit.land/json-schema/dmfr.schema.json"
+      }
+    ],
+    "configuration": {
+      "title": "Transitland Atlas DMFR",
+      "properties": {
+        "transitlandAtlas.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Transitland API key for feed status (CodeLens). Leave empty to use TRANSITLAND_API_KEY env var."
+        }
+      }
+    },
     "snippets": [
       {
-        "language": "json",
+        "language": "dmfr",
         "path": "./snippets.json"
       }
     ],
     "commands": [
       {
         "command": "transitland-atlas-vscode-extension.createNewDmfrFile",
-        "title": "Create new DMFR file"
+        "title": "New DMFR File",
+        "category": "Transitland"
       },
       {
         "command": "transitland-atlas-vscode-extension.formatDmfrFile",
         "title": "Apply opinionated format to current DMFR file",
-        "enablement": "editorLangId == json"
+        "category": "Transitland",
+        "enablement": "editorLangId == dmfr"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "transitland-atlas-vscode-extension.createNewDmfrFile",
+          "group": "navigation@10"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "transitland-atlas-vscode-extension.createNewDmfrFile"
+        },
+        {
+          "command": "transitland-atlas-vscode-extension.formatDmfrFile",
+          "when": "editorLangId == dmfr"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "yarn run compile",
@@ -41,19 +108,21 @@
     "pretest": "yarn run compile && yarn run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js",
-    "package": "vsce package"
+    "package": "vsce package --no-dependencies"
   },
   "devDependencies": {
-    "@types/vscode": "^1.75.0",
     "@types/glob": "^8.0.1",
     "@types/mocha": "^10.0.1",
-    "@types/node": "16.x",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.75.0",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
     "@typescript-eslint/parser": "^5.49.0",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^2.22.0",
     "eslint": "^8.33.0",
     "glob": "^8.1.0",
     "mocha": "^10.1.0",
-    "typescript": "^4.9.4",
-    "@vscode/test-electron": "^2.2.2"
+    "typescript": "^4.9.4"
   }
 }
