@@ -1,9 +1,19 @@
 # Change Log
 
-All notable changes to the "transitland-atlas-vscode-extension" extension will be documented in this file.
+## [0.3.0] — Unreleased
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+- Renamed extension to "Transitland" (was "Transitland Atlas DMFR")
+- Command IDs changed: `transitland-atlas-vscode-extension.*` → `transitland.*`
+- Settings changed: `transitlandAtlas.*` → `transitland.*` (add `transitland.cliPath`)
+- Switched build tooling to esbuild (multiple entry points: extension + MCP server)
+- Extracted `TransitlandCLI` wrapper class with binary auto-detection
+- Added VS Code Output Channel "Transitland" for CLI output
+- Added MCP server entry point (`out/mcp-server.js`) — Phase 2 tools forthcoming
 
-## [Unreleased]
+## [0.2.0]
 
-- Initial release
+- Added DMFR CodeLens showing live feed status from Transitland API
+
+## [0.1.0]
+
+- Initial release: DMFR language support, JSON schema validation, snippets, formatting command

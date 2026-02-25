@@ -1,24 +1,29 @@
 {
-  "name": "transitland-atlas-vscode-extension",
-  "displayName": "Transitland Atlas DMFR",
-  "publisher": "interline.io",
+  "name": "transitland-vscode-extension",
+  "displayName": "Transitland",
+  "publisher": "interline-io",
   "repository": {
     "url": "https://github.com/transitland/transitland-atlas-vscode-extension"
   },
   "license": "GPL-3.0",
-  "description": "Edit DMFR files with schema validation and Transitland feed status.",
-  "version": "0.1.0",
+  "description": "GTFS feed tools, DMFR editing, and Transitland integration for VS Code.",
+  "version": "0.3.0",
   "engines": {
-    "vscode": "^1.75.0",
+    "vscode": "^1.99.0",
     "node": ">=22"
   },
   "categories": [
     "Snippets",
-    "Linters"
+    "Linters",
+    "Other"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onLanguage:dmfr"
+    "onLanguage:dmfr",
+    "onCommand:transitland.showWelcome",
+    "onCommand:transitland.validateGtfsFeed",
+    "onCommand:transitland.inspectGtfsFeed",
+    "onCommand:transitland.inspectGtfsRtFeed"
   ],
   "extensionDependencies": [
     "vscode.json-language-features"
@@ -55,12 +60,17 @@
       }
     ],
     "configuration": {
-      "title": "Transitland Atlas DMFR",
+      "title": "Transitland",
       "properties": {
-        "transitlandAtlas.apiKey": {
+        "transitland.apiKey": {
           "type": "string",
           "default": "",
           "description": "Transitland API key for feed status (CodeLens). Leave empty to use TRANSITLAND_API_KEY env var."
+        },
+        "transitland.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the transitland CLI binary. Leave empty to auto-detect from PATH (Homebrew, go install, etc.)."
         }
       }
     },
@@ -72,57 +82,98 @@
     ],
     "commands": [
       {
-        "command": "transitland-atlas-vscode-extension.createNewDmfrFile",
+        "command": "transitland.showWelcome",
+        "title": "Open Welcome / Launcher",
+        "category": "Transitland"
+      },
+      {
+        "command": "transitland.createNewDmfrFile",
         "title": "New DMFR File",
         "category": "Transitland"
       },
       {
-        "command": "transitland-atlas-vscode-extension.formatDmfrFile",
+        "command": "transitland.formatDmfrFile",
         "title": "Apply opinionated format to current DMFR file",
         "category": "Transitland",
         "enablement": "editorLangId == dmfr"
+      },
+      {
+        "command": "transitland.validateGtfsFeed",
+        "title": "Validate GTFS Feed…",
+        "category": "Transitland"
+      },
+      {
+        "command": "transitland.inspectGtfsFeed",
+        "title": "Inspect GTFS Feed…",
+        "category": "Transitland"
+      },
+      {
+        "command": "transitland.inspectGtfsRtFeed",
+        "title": "Inspect GTFS Realtime Feed…",
+        "category": "Transitland"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "transitland-atlas-vscode-extension.createNewDmfrFile",
+          "command": "transitland.createNewDmfrFile",
           "group": "navigation@10"
         }
       ],
       "commandPalette": [
         {
-          "command": "transitland-atlas-vscode-extension.createNewDmfrFile"
+          "command": "transitland.showWelcome"
         },
         {
-          "command": "transitland-atlas-vscode-extension.formatDmfrFile",
+          "command": "transitland.createNewDmfrFile"
+        },
+        {
+          "command": "transitland.formatDmfrFile",
           "when": "editorLangId == dmfr"
+        },
+        {
+          "command": "transitland.validateGtfsFeed"
+        },
+        {
+          "command": "transitland.inspectGtfsFeed"
+        },
+        {
+          "command": "transitland.inspectGtfsRtFeed"
         }
       ]
     }
   },
   "scripts": {
-    "vscode:prepublish": "yarn run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "yarn run compile && yarn run lint",
+    "vscode:prepublish": "yarn run build",
+    "build": "yarn run typecheck && node esbuild.mjs",
+    "build:watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext ts",
+    "pretest": "yarn run build && yarn run lint",
     "test": "node ./out/test/runTest.js",
     "package": "vsce package --no-dependencies"
+  },
+  "bin": {
+    "transitland-mcp": "./out/mcp-server.js"
   },
   "devDependencies": {
     "@types/glob": "^8.0.1",
     "@types/mocha": "^10.0.1",
     "@types/node": "22.x",
-    "@types/vscode": "^1.75.0",
+    "@types/vscode": "^1.99.0",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
     "@typescript-eslint/parser": "^5.49.0",
     "@vscode/test-cli": "^0.0.4",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^2.22.0",
+    "esbuild": "^0.25.0",
     "eslint": "^8.33.0",
     "glob": "^8.1.0",
     "mocha": "^10.1.0",
-    "typescript": "^4.9.4"
+    "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.5.0",
+    "zod": "^3.22.0"
   }
 }

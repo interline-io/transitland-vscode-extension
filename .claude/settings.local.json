@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Bash(yarn run typecheck 2>&1 && node esbuild.mjs 2>&1)",
+      "Bash(yarn build:*)",
+      "Bash(yarn lint:*)"
+    ]
+  }
+}
