@@ -3,7 +3,7 @@
   "displayName": "Transitland",
   "publisher": "interline-io",
   "repository": {
-    "url": "https://github.com/transitland/transitland-atlas-vscode-extension"
+    "url": "https://github.com/interline-io/transitland-vscode-extension"
   },
   "license": "GPL-3.0",
   "description": "GTFS feed tools, DMFR editing, and Transitland integration for VS Code.",
