@@ -11,28 +11,57 @@ export const FeedInfoInputSchema = z.object({
 export type FeedInfoInput = z.infer<typeof FeedInfoInputSchema>;
 
 export interface FeedVersion {
+  id: number;
   sha1: string;
   fetchedAt: string;
   earliestCalendarDate: string | null;
   latestCalendarDate: string | null;
+  url: string;
 }
 
 export interface FeedInfoOutput {
   onestopId: string;
   spec: string;
+  name: string | null;
+  languages: string[] | null;
+  tags: Record<string, string>;
+  /** Latest fetched version — retained for CodeLens use. */
   latestVersion: FeedVersion | null;
   totalVersions: number;
+  /** The 10 most recent versions (includes latestVersion as first entry). */
+  recentVersions: FeedVersion[];
   isActive: boolean;
   urls: {
     staticCurrent?: string;
+    staticHistoric?: string[];
+    staticPlanned?: string[];
     realtimeAlerts?: string;
     realtimeTripUpdates?: string;
     realtimeVehiclePositions?: string;
+    gbfsAutoDiscovery?: string;
+    mdsProvider?: string;
   };
   license: {
     spdxIdentifier?: string;
     url?: string;
+    commercialUseAllowed?: string;
+    createDerivedProduct?: string;
+    redistributionAllowed?: string;
+    shareAlikeOptional?: string;
+    useWithoutAttribution?: string;
+    attributionText?: string;
+    attributionInstructions?: string;
   };
+  authorization: {
+    type?: string;
+    paramName?: string;
+    infoUrl?: string;
+  };
+  /** Current import status from feed_state. Null if not present. */
+  feedState: {
+    importSuccess: boolean | null;
+    importInProgress: boolean | null;
+  } | null;
 }
 
 export async function runFeedInfo(input: FeedInfoInput): Promise<FeedInfoOutput> {
@@ -57,17 +86,27 @@ export async function runFeedInfo(input: FeedInfoInput): Promise<FeedInfoOutput>
   }
 
   const versions = (feed['feed_versions'] as Array<Record<string, unknown>> | undefined) ?? [];
-  const latest = versions[0] ?? null;
-  const feedUrls = (feed['urls'] as Record<string, string> | undefined) ?? {};
+  const feedUrls = (feed['urls'] as Record<string, unknown> | undefined) ?? {};
   const feedLicense = (feed['license'] as Record<string, string> | undefined) ?? {};
+  const feedAuth = (feed['authorization'] as Record<string, string> | undefined) ?? {};
+  const feedStateRaw = (feed['feed_state'] as Record<string, unknown> | null) ?? null;
+  const fvImport = feedStateRaw
+    ? ((feedStateRaw['feed_version'] as Record<string, unknown> | null)?.['feed_version_gtfs_import'] as Record<string, unknown> | null) ?? null
+    : null;
 
   const today = new Date().toISOString().slice(0, 10);
-  const latestVersion: FeedVersion | null = latest ? {
-    sha1: String(latest['sha1'] ?? ''),
-    fetchedAt: String(latest['fetched_at'] ?? ''),
-    earliestCalendarDate: (latest['earliest_calendar_date'] as string | null) ?? null,
-    latestCalendarDate: (latest['latest_calendar_date'] as string | null) ?? null,
-  } : null;
+
+  const mapVersion = (v: Record<string, unknown>): FeedVersion => ({
+    id: (v['id'] as number) ?? 0,
+    sha1: String(v['sha1'] ?? ''),
+    fetchedAt: String(v['fetched_at'] ?? ''),
+    earliestCalendarDate: (v['earliest_calendar_date'] as string | null) ?? null,
+    latestCalendarDate: (v['latest_calendar_date'] as string | null) ?? null,
+    url: String(v['url'] ?? ''),
+  });
+
+  const latestVersion = versions.length > 0 ? mapVersion(versions[0]) : null;
+  const recentVersions = versions.slice(0, 10).map(mapVersion);
 
   const isActive = latestVersion !== null
     && latestVersion.earliestCalendarDate !== null
@@ -75,21 +114,51 @@ export async function runFeedInfo(input: FeedInfoInput): Promise<FeedInfoOutput>
     && latestVersion.earliestCalendarDate <= today
     && today <= latestVersion.latestCalendarDate;
 
+  const strArr = (v: unknown): string[] | undefined => {
+    if (!Array.isArray(v)) { return undefined; }
+    const filtered = v.filter((x): x is string => typeof x === 'string' && x.length > 0);
+    return filtered.length > 0 ? filtered : undefined;
+  };
+
   return {
     onestopId: String(feed['onestop_id'] ?? input.feedId),
     spec: String(feed['spec'] ?? 'unknown'),
+    name: (feed['name'] as string | null) ?? null,
+    languages: Array.isArray(feed['languages']) ? feed['languages'] as string[] : null,
+    tags: (feed['tags'] as Record<string, string> | null) ?? {},
     latestVersion,
     totalVersions: versions.length,
+    recentVersions,
     isActive,
     urls: {
-      staticCurrent: feedUrls['static_current'],
-      realtimeAlerts: feedUrls['realtime_alerts'],
-      realtimeTripUpdates: feedUrls['realtime_trip_updates'],
-      realtimeVehiclePositions: feedUrls['realtime_vehicle_positions'],
+      staticCurrent: (feedUrls['static_current'] as string | undefined) || undefined,
+      staticHistoric: strArr(feedUrls['static_historic']),
+      staticPlanned: strArr(feedUrls['static_planned']),
+      realtimeAlerts: (feedUrls['realtime_alerts'] as string | undefined) || undefined,
+      realtimeTripUpdates: (feedUrls['realtime_trip_updates'] as string | undefined) || undefined,
+      realtimeVehiclePositions: (feedUrls['realtime_vehicle_positions'] as string | undefined) || undefined,
+      gbfsAutoDiscovery: (feedUrls['gbfs_auto_discovery'] as string | undefined) || undefined,
+      mdsProvider: (feedUrls['mds_provider'] as string | undefined) || undefined,
     },
     license: {
-      spdxIdentifier: feedLicense['spdx_identifier'],
-      url: feedLicense['url'],
+      spdxIdentifier: feedLicense['spdx_identifier'] || undefined,
+      url: feedLicense['url'] || undefined,
+      commercialUseAllowed: feedLicense['commercial_use_allowed'] || undefined,
+      createDerivedProduct: feedLicense['create_derived_product'] || undefined,
+      redistributionAllowed: feedLicense['redistribution_allowed'] || undefined,
+      shareAlikeOptional: feedLicense['share_alike_optional'] || undefined,
+      useWithoutAttribution: feedLicense['use_without_attribution'] || undefined,
+      attributionText: feedLicense['attribution_text'] || undefined,
+      attributionInstructions: feedLicense['attribution_instructions'] || undefined,
     },
+    authorization: {
+      type: feedAuth['type'] || undefined,
+      paramName: feedAuth['param_name'] || undefined,
+      infoUrl: feedAuth['info_url'] || undefined,
+    },
+    feedState: fvImport ? {
+      importSuccess: (fvImport['success'] as boolean | null) ?? null,
+      importInProgress: (fvImport['in_progress'] as boolean | null) ?? null,
+    } : null,
   };
 }

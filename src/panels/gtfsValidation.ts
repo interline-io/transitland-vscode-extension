@@ -86,6 +86,10 @@ export class GtfsValidationPanel {
     this.panel.webview.postMessage({ command: 'entityError', message });
   }
 
+  postTransitlandInfo(info: { onestopId: string; versionCount: number | null; fetchedAt: string | null }): void {
+    this.panel.webview.postMessage({ command: 'transitlandInfo', ...info });
+  }
+
   private update(feedUrl: string, result: ValidateOutput) {
     const short = shortUrl(feedUrl);
     this.panel.title = result.summary.success ? `✓ ${short}` : `✗ ${short}`;
@@ -287,6 +291,11 @@ function buildHtml(feedUrl: string, result: ValidateOutput): string {
   .num { text-align: right; font-variant-numeric: tabular-nums; }
   .ok { color: var(--success); }
   .warn { color: var(--warning); }
+
+  /* Transitland archive info bar */
+  .tl-info-bar { padding: 6px 20px; background: rgba(100,180,255,.05); border-bottom: 1px solid var(--border); font-size: 11px; display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .tl-info-bar a { color: var(--link); text-decoration: none; font-weight: 600; font-family: var(--vscode-editor-font-family, monospace); }
+  .tl-info-bar a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -302,6 +311,7 @@ function buildHtml(feedUrl: string, result: ValidateOutput): string {
   <div class="meta-item"><span class="label">Warnings</span><span class="value ${summary.warningCount > 0 ? 'warn' : ''}">${esc(summary.warningCount)}</span></div>
   ${result.includesRt ? `<div class="meta-item"><span class="label">Realtime</span><span class="value ok">${realtimeFeeds.length} feed${realtimeFeeds.length !== 1 ? 's' : ''}</span></div>` : ''}
 </div>
+<div id="tl-info-bar" class="tl-info-bar" style="display:none"></div>
 ${entityLoadBar}
 <section>
   <h2>Issues (${errors.length} errors, ${warnings.length} warnings)</h2>
@@ -319,7 +329,17 @@ ${rtSection(realtimeFeeds)}
 
   window.addEventListener('message', event => {
     const msg = event.data;
-    if (msg.command === 'entityLoading') {
+    if (msg.command === 'transitlandInfo') {
+      const bar = document.getElementById('tl-info-bar');
+      if (!bar) { return; }
+      const versions = (msg.versionCount !== null && msg.versionCount > 0)
+        ? ' \u00b7 ' + msg.versionCount + ' archived version' + (msg.versionCount !== 1 ? 's' : '')
+        : '';
+      const fetched = msg.fetchedAt ? ' \u00b7 fetched ' + msg.fetchedAt.slice(0, 10) : '';
+      bar.innerHTML = '\u2197 <a href="https://transit.land/feeds/' + encodeURIComponent(msg.onestopId) + '">'
+        + escHtml(msg.onestopId) + '</a><span class="tl-meta-text"> on transit.land' + versions + fetched + '</span>';
+      bar.style.display = 'flex';
+    } else if (msg.command === 'entityLoading') {
       const btn = document.getElementById('btn-load-entities');
       if (btn) { btn.disabled = true; btn.textContent = '⟳ Loading entity details…'; }
     } else if (msg.command === 'entityData') {

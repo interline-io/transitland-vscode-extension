@@ -7,9 +7,9 @@
   },
   "license": "GPL-3.0",
   "description": "GTFS feed tools, DMFR editing, and Transitland integration for VS Code.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "engines": {
-    "vscode": "^1.99.0",
+    "vscode": "^1.105.0",
     "node": ">=22"
   },
   "categories": [
@@ -18,13 +18,6 @@
     "Other"
   ],
   "main": "./out/extension.js",
-  "activationEvents": [
-    "onLanguage:dmfr",
-    "onCommand:transitland.showWelcome",
-    "onCommand:transitland.validateGtfsFeed",
-    "onCommand:transitland.inspectGtfsFeed",
-    "onCommand:transitland.inspectGtfsRtFeed"
-  ],
   "extensionDependencies": [
     "vscode.json-language-features"
   ],
@@ -111,6 +104,333 @@
         "command": "transitland.inspectGtfsRtFeed",
         "title": "Inspect GTFS Realtime Feed…",
         "category": "Transitland"
+      },
+      {
+        "command": "transitland.compareFeedSources",
+        "title": "Compare GTFS Feed Sources…",
+        "category": "Transitland"
+      }
+    ],
+    "chatInstructions": [
+      {
+        "path": "./instructions/dmfr-assistant.instructions.md",
+        "when": "editorLangId == dmfr"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "transitland.assistant",
+        "name": "transitland",
+        "fullName": "Transitland Assistant",
+        "description": "DMFR editing and GTFS feed tools for the Transitland Atlas",
+        "isSticky": false,
+        "commands": [
+          { "name": "validate", "description": "Validate a GTFS feed URL" },
+          { "name": "inspect",  "description": "Inspect a GTFS feed's agencies, routes and stops" }
+        ]
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "transitland_validate",
+        "toolReferenceName": "transitlandValidate",
+        "displayName": "Validate GTFS Feed",
+        "modelDescription": "Validate a GTFS zip file or URL using the transitland CLI. Runs best-practices checks and returns a pass/fail summary with SHA1, calendar date range, and full error/warning details.",
+        "userDescription": "Validate a GTFS feed for spec compliance errors and warnings",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "feed": { "type": "string", "description": "URL or local file path of a GTFS zip to validate" },
+            "rtUrls": { "type": "array", "items": { "type": "string" }, "description": "GTFS-RT feed URLs to pair with the static feed during validation" },
+            "errorLimit": { "type": "integer", "description": "Max detailed errors per error group (default: 1000)" }
+          },
+          "required": ["feed"]
+        }
+      },
+      {
+        "name": "transitland_inspect",
+        "toolReferenceName": "transitlandInspect",
+        "displayName": "Inspect GTFS Feed",
+        "modelDescription": "Inspect a GTFS zip file or URL. Returns agencies, routes, stops, file list, feed info, and optional service level calendar data.",
+        "userDescription": "Inspect GTFS feed entities and structure",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "feed": { "type": "string", "description": "URL or local file path of a GTFS zip to inspect" },
+            "includeServiceLevels": { "type": "boolean", "description": "Include per-route service level details (slower)" },
+            "includeRouteGeometries": { "type": "boolean", "description": "Include route geometries in output" }
+          },
+          "required": ["feed"]
+        }
+      },
+      {
+        "name": "transitland_inspect_rt",
+        "toolReferenceName": "transitlandInspectRt",
+        "displayName": "Inspect GTFS-RT Feed",
+        "modelDescription": "Inspect a GTFS Realtime protobuf feed URL. Returns vehicle positions, trip updates, and service alerts with entity counts and details.",
+        "userDescription": "Inspect a GTFS Realtime feed",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "description": "URL or local file path of a GTFS Realtime protobuf feed to inspect" }
+          },
+          "required": ["url"]
+        }
+      },
+      {
+        "name": "transitland_feed_info",
+        "toolReferenceName": "transitlandFeedInfo",
+        "displayName": "Transitland Feed Info",
+        "modelDescription": "Look up a feed in the Transitland archive by its onestop_id. Returns feed metadata including the latest version SHA1, calendar date range, URLs, and license info. Requires a Transitland API key configured in settings.",
+        "userDescription": "Look up a feed in the Transitland archive",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "feedId": { "type": "string", "description": "Transitland feed onestop_id (e.g. f-9q9-caltrain)" }
+          },
+          "required": ["feedId"]
+        }
+      },
+      {
+        "name": "transitland_dmfr_schema",
+        "toolReferenceName": "transitlandDmfrSchema",
+        "displayName": "DMFR Schema",
+        "modelDescription": "Returns the full DMFR JSON schema describing valid fields, types, and enum values for feed records and operator records in .dmfr.json files. Call this when you need to know what fields are allowed, required, or what values are valid.",
+        "userDescription": "Look up the DMFR JSON schema",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "transitland_read_dmfr",
+        "toolReferenceName": "transitlandReadDmfr",
+        "displayName": "Read DMFR File",
+        "modelDescription": "Read a .dmfr.json file and return all its feeds (with operator names and all URL fields) and top-level operators as structured text. If no file path is given, reads the currently active editor. ALWAYS use this tool instead of running Python, shell commands, or scripts to inspect DMFR file contents.",
+        "userDescription": "Read a DMFR file's feeds and operators",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string", "description": "Path to the .dmfr.json file relative to the workspace root. Omit to use the active editor." }
+          }
+        }
+      },
+      {
+        "name": "transitland_search_feeds",
+        "toolReferenceName": "transitlandSearchFeeds",
+        "displayName": "Search DMFR Feeds",
+        "modelDescription": "Search for feeds across all .dmfr.json files in the workspace. Matches the query string against feed IDs, URLs, or spec types. Use this to find which file contains a particular feed, URL pattern, or operator. Returns matching feeds with their source file paths.",
+        "userDescription": "Search feeds across workspace DMFR files",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "description": "Search string to match against feeds" },
+            "field": { "type": "string", "enum": ["any", "url", "id", "spec"], "description": "Which field to search in (default: any)" }
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "transitland_gtfs_spec",
+        "toolReferenceName": "transitlandGtfsSpec",
+        "displayName": "GTFS Specification",
+        "modelDescription": "Returns the GTFS Schedule or GTFS Realtime specification as markdown. Use the 'file' parameter to retrieve only the section for a specific GTFS file (e.g. 'stops.txt', 'routes.txt', 'stop_times.txt'). Use type='rt' for the GTFS Realtime spec. Call this when you need to understand GTFS field definitions, presence requirements, or data format rules.",
+        "userDescription": "Look up the GTFS or GTFS-RT specification",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string", "description": "Optional GTFS filename to filter to (e.g. 'stops.txt')" },
+            "type": { "type": "string", "enum": ["schedule", "rt"], "description": "Which spec to return: 'schedule' (default) or 'rt'" }
+          }
+        }
+      },
+      {
+        "name": "transitland_compare_feed_sources",
+        "toolReferenceName": "transitlandCompareFeedSources",
+        "displayName": "Compare GTFS Feed Sources",
+        "modelDescription": "Compare two or more alternative GTFS data sources for the same service or agency — for example, a direct agency URL vs. a third-party aggregator URL. Downloads and inspects each feed to compare SHA1, calendar coverage, agencies, routes, stops, trips, feed_info, and validation issues. Returns a verdict recommending which source is more complete, recent, or active. NOTE: this tool is for comparing competing sources of the same service, not for diffing two historical versions of the same feed. Use this when a DMFR feed record lists multiple candidate URLs and you need to decide which to use as static_current.",
+        "userDescription": "Compare alternative GTFS data sources for the same agency or service",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "urls": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 2,
+              "description": "Two or more GTFS feed URLs or local file paths representing alternative data sources for the same service or agency"
+            },
+            "apiKey": {
+              "type": "string",
+              "description": "Transitland API key for archive lookup (optional; falls back to TRANSITLAND_API_KEY env var)"
+            }
+          },
+          "required": ["urls"]
+        }
+      },
+      {
+        "name": "transitland_ntd_search",
+        "toolReferenceName": "transitlandNtdSearch",
+        "displayName": "Search US NTD GTFS Weblinks",
+        "modelDescription": "Search the US National Transit Database (NTD) GTFS Weblinks dataset (data.transportation.gov). Returns matching agencies with their NTD ID (for use as operator tags.us_ntd_id in DMFR), city, state, transit modes, and GTFS feed URLs (candidate static_current values). Query by agency name (partial match) or numeric NTD ID; optionally filter by two-letter US state code. Use this when adding or updating a US transit operator in the Atlas to find the correct us_ntd_id tag and to discover candidate GTFS URLs.",
+        "userDescription": "Search US NTD agencies for NTD IDs and GTFS feed URLs",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Agency name to search (partial match), or a numeric NTD ID (1–5 digits, zero-padding optional)"
+            },
+            "state": {
+              "type": "string",
+              "description": "Two-letter US state code to narrow results (e.g. CA, WA, TX)"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max agencies to return (default: 10, max: 50)"
+            }
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "transitland_agencies_in_feed",
+        "toolReferenceName": "transitlandAgenciesInFeed",
+        "displayName": "Agencies in GTFS Feed",
+        "modelDescription": "List all agencies defined in a GTFS feed (agency.txt), along with a brief feed summary (SHA1, calendar range, route/stop/trip counts). Use this when setting up operator records or associated_feeds crosslinks in DMFR — it gives you the official agency names, agency_ids, websites, and timezones without the large routes/stops output that transitland_inspect produces. Prefer this over transitland_inspect when you only need to know which agencies are represented in a feed.",
+        "userDescription": "List agencies in a GTFS feed for operator/associated_feeds setup",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "feed": { "type": "string", "description": "URL or local file path of a GTFS zip" }
+          },
+          "required": ["feed"]
+        }
+      },
+      {
+        "name": "transitland_set_field",
+        "toolReferenceName": "transitlandSetField",
+        "displayName": "Set DMFR Field",
+        "modelDescription": "Set or remove a single field in a feed or operator record inside a .dmfr.json file. Locate the record by type ('feed' or 'operator') and its ID, then specify the field using dot-notation (e.g. 'tags.us_ntd_id', 'urls.static_current', 'license.spdx_identifier', 'name'). Pass value=null to remove the field. Intermediate objects are created automatically (e.g. setting 'tags.us_ntd_id' creates a 'tags' object if it doesn't exist). The file is formatted in-place after the edit using the transitland CLI.",
+        "userDescription": "Set or remove a field in a DMFR feed or operator record",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string", "description": "Workspace-relative path to the .dmfr.json file. Omit to use the active editor." },
+            "recordType": { "type": "string", "enum": ["feed", "operator"], "description": "Type of record to update: 'feed' (feeds[] entry matched by id) or 'operator' (top-level operators[] or feed-nested operators[] entry)" },
+            "id": { "type": "string", "description": "Feed onestop_id (e.g. f-9q9-caltrain) or operator onestop_id / operator_onestop_id" },
+            "field": { "type": "string", "description": "Dot-notation field path (e.g. 'tags.us_ntd_id', 'urls.static_current', 'license.spdx_identifier', 'name')" },
+            "value": { "type": ["string", "null"], "description": "New string value, or null to remove the field" }
+          },
+          "required": ["recordType", "id", "field", "value"]
+        }
+      },
+      {
+        "name": "transitland_add_feed",
+        "toolReferenceName": "transitlandAddFeed",
+        "displayName": "Add DMFR Feed",
+        "modelDescription": "Add a new feed record to a .dmfr.json file. Provide a feedId (f-<geohash>-<name> format — use f-FIXME-<slug> if the geohash is unknown), one or more URLs, and optional metadata. Spec is auto-detected: staticUrl only → gtfs; any realtime URL only → gtfs-rt; both → gtfs (realtime should be a separate gtfs-rt record). Scans all workspace .dmfr.json files for duplicate URLs and fails if any are found — use the existing record instead. Optionally set license (spdxIdentifier, useWithoutAttribution, etc.) and authorization (type, paramName, infoUrl) at creation time; these can also be set later with transitland_set_field. Use name only for large aggregated multi-agency feeds (e.g. UK BODS); omit for ordinary single-agency feeds.",
+        "userDescription": "Add a new feed record to a .dmfr.json file",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string", "description": "Workspace-relative path to the .dmfr.json file. Omit to use the active editor." },
+            "feedId": { "type": "string", "description": "Feed onestop_id (e.g. f-9q9-caltrain). Use f-FIXME-<slug> as a placeholder if the geohash is unknown." },
+            "spec": { "type": "string", "enum": ["gtfs", "gtfs-rt", "gbfs", "mds"], "description": "Feed spec. Auto-detected from provided URLs if omitted." },
+            "staticUrl": { "type": "string", "description": "GTFS/GBFS zip URL (→ urls.static_current)" },
+            "vehiclePositionsUrl": { "type": "string", "description": "GTFS-RT vehicle positions URL (→ urls.realtime_vehicle_positions)" },
+            "tripUpdatesUrl": { "type": "string", "description": "GTFS-RT trip updates URL (→ urls.realtime_trip_updates)" },
+            "alertsUrl": { "type": "string", "description": "GTFS-RT service alerts URL (→ urls.realtime_alerts)" },
+            "name": { "type": "string", "description": "Human-readable feed name. Use only for large aggregated feeds covering many agencies. Omit for ordinary single-agency feeds." },
+            "license": {
+              "type": "object",
+              "description": "License metadata (all fields optional)",
+              "properties": {
+                "spdxIdentifier": { "type": "string", "description": "SPDX license code, e.g. CC-BY-4.0, ODbL-1.0, CC0-1.0" },
+                "useWithoutAttribution": { "type": "string", "enum": ["yes", "no", "unknown"] },
+                "createDerivedProduct": { "type": "string", "enum": ["yes", "no", "unknown"] },
+                "commercialUseAllowed": { "type": "string", "enum": ["yes", "no", "unknown"] },
+                "redistributionAllowed": { "type": "string", "enum": ["yes", "no", "unknown"] },
+                "shareAlikeOptional": { "type": "string", "enum": ["yes", "no", "unknown"] },
+                "attributionText": { "type": "string" },
+                "attributionInstructions": { "type": "string" }
+              }
+            },
+            "authorization": {
+              "type": "object",
+              "description": "Authorization required to download this feed (all fields optional)",
+              "properties": {
+                "type": { "type": "string", "enum": ["header", "query_param", "path", "replace"] },
+                "paramName": { "type": "string", "description": "Header or query parameter name" },
+                "infoUrl": { "type": "string", "description": "URL where users can obtain credentials" }
+              }
+            }
+          },
+          "required": ["feedId"]
+        }
+      },
+      {
+        "name": "transitland_add_operator",
+        "toolReferenceName": "transitlandAddOperator",
+        "displayName": "Add DMFR Operator",
+        "modelDescription": "Add an operator record to a .dmfr.json file. Two placements: 'nested' embeds the operator inside an existing static feed's operators[] array (the feed link is implicit — do not repeat it in associatedFeeds); 'top_level' adds the operator to the root operators[] array and requires at least one associatedFeeds entry with a feedOnestopId pointing to the static feed. Rules for associatedFeeds: single-agency nested → omit associatedFeeds entirely; multi-agency nested → one entry with gtfsAgencyId only; nested + RT → one entry per RT feed with feedOnestopId; top_level → one entry per linked feed (static + RT), each with feedOnestopId, plus gtfsAgencyId on the static feed entry if multi-agency. An operator can never be nested under a gtfs-rt feed — link RT feeds via associatedFeeds feedOnestopId instead.",
+        "userDescription": "Add an operator record to a .dmfr.json file",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string", "description": "Workspace-relative path to the .dmfr.json file. Omit to use the active editor." },
+            "placement": { "type": "string", "enum": ["nested", "top_level"], "description": "Where to place the operator: 'nested' inside a static feed's operators[], or 'top_level' in the root operators[]." },
+            "feedId": { "type": "string", "description": "Required when placement is 'nested'. The onestop_id of the static feed to nest under." },
+            "operatorOnestopId": { "type": "string", "description": "Operator onestop_id (o-<geohash>-<name> format, e.g. o-9q9-caltrain)." },
+            "name": { "type": "string", "description": "Official operator name." },
+            "shortName": { "type": "string", "description": "Common short name or brand name." },
+            "website": { "type": "string", "description": "Operator website URL." },
+            "associatedFeeds": {
+              "type": "array",
+              "description": "Feed linkages. Omit for single-agency nested operators. See modelDescription for rules.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "feedOnestopId": { "type": "string", "description": "feed_onestop_id to link (RT feeds, external static feeds, or the static feed for top_level operators)." },
+                  "gtfsAgencyId": { "type": "string", "description": "gtfs_agency_id from agency.txt. Only needed for multi-agency feeds." }
+                }
+              }
+            },
+            "tags": {
+              "type": "object",
+              "description": "Key-value tags (e.g. us_ntd_id, wikidata_id, twitter_general).",
+              "additionalProperties": { "type": "string" }
+            }
+          },
+          "required": ["placement", "operatorOnestopId", "name"]
+        }
+      },
+      {
+        "name": "transitland_dmfr_format",
+        "toolReferenceName": "transitlandDmfrFormat",
+        "displayName": "Format DMFR File",
+        "modelDescription": "Run the transitland DMFR linter/formatter on a .dmfr.json file, normalizing field order, whitespace, and feed/operator ordering in-place. The editing tools (transitland_set_field, transitland_add_feed, transitland_add_operator) call this automatically after each write, but you can call it explicitly if the CLI was unavailable during a previous edit or after any manual file change.",
+        "userDescription": "Lint and format a .dmfr.json file in-place",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string", "description": "Workspace-relative path to the .dmfr.json file. Omit to use the active editor." }
+          }
+        }
       }
     ],
     "menus": {
@@ -139,6 +459,9 @@
         },
         {
           "command": "transitland.inspectGtfsRtFeed"
+        },
+        {
+          "command": "transitland.compareFeedSources"
         }
       ]
     }
@@ -151,7 +474,8 @@
     "lint": "eslint src --ext ts",
     "pretest": "yarn run build && yarn run lint",
     "test": "node ./out/test/runTest.js",
-    "package": "vsce package --no-dependencies"
+    "package": "vsce package --no-dependencies",
+    "install-ext": "yarn package && code --install-extension \"transitland-vscode-extension-$(node -p 'require(\"./package.json\").version').vsix\""
   },
   "bin": {
     "transitland-mcp": "./out/mcp-server.js"

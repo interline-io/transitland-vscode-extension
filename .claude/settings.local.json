@@ -4,7 +4,14 @@
       "WebFetch(domain:github.com)",
       "Bash(yarn run typecheck 2>&1 && node esbuild.mjs 2>&1)",
       "Bash(yarn build:*)",
-      "Bash(yarn lint:*)"
+      "Bash(yarn lint:*)",
+      "WebSearch",
+      "WebFetch(domain:dmfr.transit.land)",
+      "WebFetch(domain:gtfs.org)",
+      "WebFetch(domain:code.visualstudio.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:dev.socrata.com)",
+      "WebFetch(domain:data.transportation.gov)"
     ]
   }
 }

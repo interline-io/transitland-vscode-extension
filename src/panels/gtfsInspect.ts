@@ -35,6 +35,10 @@ export class GtfsInspectPanel {
     return GtfsInspectPanel.current;
   }
 
+  postTransitlandInfo(info: { onestopId: string; versionCount: number | null; fetchedAt: string | null }): void {
+    this.panel.webview.postMessage({ command: 'transitlandInfo', ...info });
+  }
+
   /** Post a filterTab message to switch tabs and apply a filter. */
   postFilter(tab: 'stops' | 'routes', filter: string): void {
     this.panel.webview.postMessage({ command: 'filterTab', tab, filter });
@@ -455,6 +459,12 @@ function buildHtml(feedUrl: string, result: InspectOutput): string {
   .date-cell { font-size: 10px; font-family: monospace; color: var(--muted); }
   .day-cell { text-align: center; font-size: 11px; background: rgba(0, 130, 255, var(--alpha, 0)); border-radius: 2px; color: transparent; }
   .day-cell:hover { color: var(--fg); }
+
+  /* Transitland archive info bar */
+  .tl-info-bar { padding: 6px 20px; background: rgba(100,180,255,.05); border-bottom: 1px solid var(--border); font-size: 11px; display: flex; align-items: center; gap: 6px; color: var(--muted); flex-shrink: 0; }
+  .tl-info-bar a { color: var(--vscode-textLink-foreground, #4daafc); text-decoration: none; font-weight: 600; font-family: monospace; }
+  .tl-info-bar a:hover { text-decoration: underline; }
+  .tl-meta-text { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -463,6 +473,7 @@ function buildHtml(feedUrl: string, result: InspectOutput): string {
   <div class="url">${esc(feedUrl)}</div>
 </header>
 <div class="meta">${metaItems.join('\n')}</div>
+<div id="tl-info-bar" class="tl-info-bar" style="display:none"></div>
 <div class="tabs">${tabButtons}</div>
 ${tabPanels}
 <script>
@@ -495,9 +506,25 @@ ${tabPanels}
     });
   }
 
-  // Handle filterTab messages from the extension (e.g., from validation panel "View in inspector")
+  function escHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Handle messages from the extension
   window.addEventListener('message', event => {
     const msg = event.data;
+    if (msg.command === 'transitlandInfo') {
+      const bar = document.getElementById('tl-info-bar');
+      if (!bar) { return; }
+      const versions = (msg.versionCount !== null && msg.versionCount > 0)
+        ? ' \u00b7 ' + msg.versionCount + ' archived version' + (msg.versionCount !== 1 ? 's' : '')
+        : '';
+      const fetched = msg.fetchedAt ? ' \u00b7 fetched ' + msg.fetchedAt.slice(0, 10) : '';
+      bar.innerHTML = '\u2197 <a href="https://transit.land/feeds/' + encodeURIComponent(msg.onestopId) + '">'
+        + escHtml(msg.onestopId) + '</a><span class="tl-meta-text"> on transit.land' + versions + fetched + '</span>';
+      bar.style.display = 'flex';
+      return;
+    }
     if (msg.command !== 'filterTab') { return; }
 
     // Switch to the requested tab
